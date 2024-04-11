@@ -1,11 +1,12 @@
-import tkinter as tk
 import json
-from PIL import Image, ImageTk
+import tkinter as tk
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List
-from tkinter import messagebox
 from time import localtime, strftime
+from tkinter import messagebox
+from typing import Callable
+
+from PIL import Image, ImageTk
 
 # Important directory
 assets = Path(__file__).resolve().parent / "assets"
@@ -15,7 +16,6 @@ ORDERS = {}
 ITEMS_UNIT_PRICE = json.loads(
     (assets / "unit_price.json").read_text(encoding="utf-8")
 )
-
 
 
 @dataclass
@@ -40,7 +40,8 @@ class ProfileWidget:
 
     def generate_widget(self):
         self._load_image("Profile.jpg")
-        self.profile = tk.Label(self.frame, image=self.profile_img, text="Jethro Arciaga", compound=tk.BOTTOM)
+        self.profile = tk.Label(self.frame, image=self.profile_img,
+                                text="Jethro Arciaga", compound=tk.BOTTOM)
         self.profile.image = self.profile_img
         self.profile.grid(row=0, column=0)
 
@@ -185,6 +186,7 @@ class OrderDetailsWidget:
             ORDERS = orders
             modify_window.destroy()
             self.create_table(ORDERS)
+            self.update_total_amount(ORDERS)
 
         def add_item(orders):
             selection = product_listbox.curselection()
@@ -210,13 +212,13 @@ class OrderDetailsWidget:
                 selected_item = product_listbox.get(index)
                 key = selected_item.split("|")[0].strip()
                 if orders[key]["quantity"] == 0:
-                    messagebox.showerror("Error", "If quantity is 0 the product will be deleted from the transaction.")
+                    messagebox.showerror("Error", "If quantity is 0 the product will be \
+                                         deleted from the transaction.")
                 else:
                     unit_price = ITEMS_UNIT_PRICE[key]
                     orders[key]["quantity"] -= 1
                     orders[key]["price"] = unit_price * orders[key]["quantity"]
             refresh_window()
-
 
         modify_window = tk.Toplevel(self.frame)
         modify_window.title("Edit transaction window")
@@ -265,7 +267,8 @@ class OrderDetailsWidget:
         self.total_amount_label = tk.Label(self.frame, text="Total: ")
         self.total_amount_label.grid(row=2, column=0, sticky="nw")
 
-        edit_transaction = tk.Button(self.frame, text="Edit transaction", command=self.modify_transaction_window)
+        edit_transaction = tk.Button(self.frame, text="Edit transaction",
+                                     command=self.modify_transaction_window)
         edit_transaction.grid(row=2, column=2, columnspan=2, sticky="ne")
 
     def update_total_amount(self, products):
@@ -307,10 +310,12 @@ class OrderDetailsWidget:
             label_product = tk.Label(scrollable_frame, text=product["name"], width=17, bg="white")
             label_product.grid(row=i, column=0)
 
-            label_quantity = tk.Label(scrollable_frame, text=str(product["quantity"]), bg="white", width=17)
+            label_quantity = tk.Label(scrollable_frame, text=str(product["quantity"]),
+                                      bg="white", width=17)
             label_quantity.grid(row=i, column=1)
 
-            label_price = tk.Label(scrollable_frame, text=str(product["price"]), bg="white", width=17)
+            label_price = tk.Label(scrollable_frame, text=str(product["price"]),
+                                   bg="white", width=17)
             label_price.grid(row=i, column=2)
 
 
