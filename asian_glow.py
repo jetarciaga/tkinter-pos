@@ -1,12 +1,21 @@
 import tkinter as tk
+import json
 from PIL import Image, ImageTk
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, List
+from tkinter import messagebox
 from time import localtime, strftime
+
+# Important directory
+assets = Path(__file__).resolve().parent / "assets"
 
 # This will serve as our database
 ORDERS = {}
+ITEMS_UNIT_PRICE = json.loads(
+    (assets / "unit_price.json").read_text(encoding="utf-8")
+)
+
 
 
 @dataclass
@@ -153,14 +162,111 @@ class OrderDetailsWidget:
     def __post_init__(self):
         self.frame = tk.Frame(self.master, bd=1)
         self.frame.grid(row=0, column=3, sticky="ns")
-        self.total_amount_label = tk.Label(self.frame, text=f"Total: ")
-        self.total_amount_label.grid(row=2, column=0, sticky="nw")
         self.create_table(ORDERS)
         self.generate_widget()
 
+    def modify_transaction_window(self):
+        temp_order = ORDERS.copy()
+
+        def refresh_window():
+            selection = product_listbox.curselection()
+            product_listbox.delete(0, "end")
+            for item in temp_order:
+                product_listbox.insert(tk.END, f"{item} \t|\t QTY: {ORDERS[item]["quantity"]}")
+            if selection:
+                product_listbox.selection_set(selection[0])
+
+        def confirm_changes(orders):
+            global ORDERS
+            for order in orders.copy():
+                if orders[order]["quantity"] == 0:
+                    del orders[order]
+
+            ORDERS = orders
+            modify_window.destroy()
+            self.create_table(ORDERS)
+
+        def add_item(orders):
+            selection = product_listbox.curselection()
+            if len(selection) == 0:
+                messagebox.showerror("Selection Error.", "Please select an item to modify.")
+
+            if selection:
+                index = selection[0]
+                selected_item = product_listbox.get(index)
+                key = selected_item.split("|")[0].strip()
+                unit_price = ITEMS_UNIT_PRICE[key]
+                orders[key]["quantity"] += 1
+                orders[key]["price"] = unit_price * orders[key]["quantity"]
+            refresh_window()
+
+        def subtract_item(orders):
+            selection = product_listbox.curselection()
+            if len(selection) == 0:
+                messagebox.showerror("Selection Error.", "Please select an item to modify.")
+
+            if selection:
+                index = selection[0]
+                selected_item = product_listbox.get(index)
+                key = selected_item.split("|")[0].strip()
+                if orders[key]["quantity"] == 0:
+                    messagebox.showerror("Error", "If quantity is 0 the product will be deleted from the transaction.")
+                else:
+                    unit_price = ITEMS_UNIT_PRICE[key]
+                    orders[key]["quantity"] -= 1
+                    orders[key]["price"] = unit_price * orders[key]["quantity"]
+            refresh_window()
+
+
+        modify_window = tk.Toplevel(self.frame)
+        modify_window.title("Edit transaction window")
+        modify_window.grab_set()
+
+        product_listbox = tk.Listbox(modify_window, selectmode=tk.SINGLE, width=40)
+        product_listbox.grid(row=0, column=0, padx=5, pady=5, columnspan=3)
+
+        subtract_button = tk.Button(
+            modify_window,
+            text="-",
+            width=4,
+            height=1,
+            font=("Helvetica", 20),
+            command=lambda: subtract_item(temp_order)
+            )
+        subtract_button.grid(row=1, column=0, pady=3)
+
+        add_button = tk.Button(
+            modify_window,
+            text="+",
+            width=4,
+            height=1,
+            font=("Helvetica", 20),
+            command=lambda: add_item(temp_order)
+            )
+        add_button.grid(row=1, column=1, pady=3)
+
+        confirm_button = tk.Button(
+            modify_window,
+            text="✓",
+            width=4,
+            height=1,
+            font=("Helvetica", 20),
+            fg="green",
+            command=lambda: confirm_changes(temp_order)
+            )
+        confirm_button.grid(row=1, column=2, pady=3)
+
+        refresh_window()
+
     def generate_widget(self):
-        label = tk.Label(self.frame, text="Order Details")
+        label = tk.Label(self.frame, text="Transaction Details")
         label.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+
+        self.total_amount_label = tk.Label(self.frame, text="Total: ")
+        self.total_amount_label.grid(row=2, column=0, sticky="nw")
+
+        edit_transaction = tk.Button(self.frame, text="Edit transaction", command=self.modify_transaction_window)
+        edit_transaction.grid(row=2, column=2, columnspan=2, sticky="ne")
 
     def update_total_amount(self, products):
         total_price = sum(product['price'] for product in products.values())
@@ -168,7 +274,7 @@ class OrderDetailsWidget:
 
     def create_table(self, products):
         table_frame = tk.Frame(self.frame, bg="white", bd=1)
-        table_frame.grid(row=1, column=0)
+        table_frame.grid(row=1, column=0, columnspan=3)
         canvas = tk.Canvas(table_frame, bg="white")
         scrollbar = tk.Scrollbar(
             table_frame,
@@ -212,5 +318,5 @@ if __name__ == "__main__":
     root = tk.Tk()
     ProfileWidget(root)
     order_details_widget = OrderDetailsWidget(root)
-    product_widget = ProductWidget(root, order_details_widget)
+    ProductWidget(root, order_details_widget)
     root.mainloop()
