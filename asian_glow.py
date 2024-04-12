@@ -5,6 +5,7 @@ from pathlib import Path
 from time import localtime, strftime
 from tkinter import messagebox
 from typing import Callable
+from datetime import datetime
 
 from PIL import Image, ImageTk
 
@@ -13,6 +14,8 @@ assets = Path(__file__).resolve().parent / "assets"
 
 # This will serve as our database
 ORDERS = {}
+
+# This is the item price reference
 ITEMS_UNIT_PRICE = json.loads(
     (assets / "unit_price.json").read_text(encoding="utf-8")
 )
@@ -52,7 +55,7 @@ class ProfileWidget:
 @dataclass
 class ProductWidget:
     master: tk.Tk
-    order_details_widget: 'OrderDetailsWidget'
+    order_details_widget: "OrderDetailsWidget"
 
     def __post_init__(self):
         self.frame = tk.Frame(self.master, bd=1)
@@ -166,6 +169,21 @@ class OrderDetailsWidget:
         self.create_table(ORDERS)
         self.generate_widget()
 
+    def receipt_window(self):
+        if len(ORDERS) < 1:
+            messagebox.showerror("Receipt Error", "Nothing to generate.")
+            return
+
+        receipt_window = tk.Toplevel(self.frame)
+        receipt_window.title("Receipt")
+        receipt_window.grab_set()
+
+        current_date = datetime.now()
+        headers = tk.Label(receipt_window, text=f"Asian Glow Skin Care\n{current_date}", bg="white")
+        headers.grid(row=0, column=0, columnspan=3, sticky="ew")
+
+        self.create_table(ORDERS, receipt=True, headers=False, frame=receipt_window)
+
     def modify_transaction_window(self):
         temp_order = ORDERS.copy()
 
@@ -257,7 +275,6 @@ class OrderDetailsWidget:
             command=lambda: confirm_changes(temp_order)
             )
         confirm_button.grid(row=1, column=2, pady=3)
-
         refresh_window()
 
     def generate_widget(self):
@@ -268,15 +285,25 @@ class OrderDetailsWidget:
         self.total_amount_label.grid(row=2, column=0, sticky="nw")
 
         edit_transaction = tk.Button(self.frame, text="Edit transaction",
-                                     command=self.modify_transaction_window)
-        edit_transaction.grid(row=2, column=2, columnspan=2, sticky="ne")
+                                     command=self.modify_transaction_window,
+                                     height=3)
+        edit_transaction.grid(row=2, column=1, padx=1, pady=4, sticky="ne")
+
+        receipt_button = tk.Button(self.frame, text="Generate Receipt", height=3, command=self.receipt_window)
+        receipt_button.grid(row=2, column=2, padx=1, pady=4)
 
     def update_total_amount(self, products):
         total_price = sum(product['price'] for product in products.values())
         self.total_amount_label.config(text=f"Total: {total_price}")
+        return total_price
 
-    def create_table(self, products):
-        table_frame = tk.Frame(self.frame, bg="white", bd=1)
+    def create_table(self, products, receipt=False, headers=True, frame=None):
+        start = 1
+        if frame is None:
+            frame = self.frame
+        if not headers:
+            start = 2
+        table_frame = tk.Frame(frame, bg="white", bd=1)
         table_frame.grid(row=1, column=0, columnspan=3)
         canvas = tk.Canvas(table_frame, bg="white")
         scrollbar = tk.Scrollbar(
@@ -300,13 +327,14 @@ class OrderDetailsWidget:
         scrollbar.grid(column=4, row=1, sticky="ns")
 
         # Create table headers
-        headers = ["Product", "Quantity", "Price"]
-        for i, header in enumerate(headers):
-            label = tk.Label(table_frame, text=header, relief=tk.RIDGE, width=17)
-            label.grid(row=0, column=i)
+        if headers:
+            headers = ["Product", "Quantity", "Price"]
+            for i, header in enumerate(headers):
+                label = tk.Label(table_frame, text=header, relief=tk.RIDGE, width=17)
+                label.grid(row=0, column=i)
 
         # Populate products
-        for i, product in enumerate(products.values(), 1):
+        for i, product in enumerate(products.values(), start=start):
             label_product = tk.Label(scrollable_frame, text=product["name"], width=17, bg="white")
             label_product.grid(row=i, column=0)
 
@@ -318,9 +346,15 @@ class OrderDetailsWidget:
                                    bg="white", width=17)
             label_price.grid(row=i, column=2)
 
+        if receipt:
+            grand_total = self.update_total_amount(ORDERS)
+            total_amount = tk.Label(scrollable_frame, text=f"Total: {grand_total}", bg="white", bd=1, font=("Helvetica", 13))
+            total_amount.grid(row=i+1, column=2)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.title("Asian Glow")
     ProfileWidget(root)
     order_details_widget = OrderDetailsWidget(root)
     ProductWidget(root, order_details_widget)
