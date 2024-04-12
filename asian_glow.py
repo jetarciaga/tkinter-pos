@@ -279,7 +279,7 @@ class OrderDetailsWidget:
 
     def generate_widget(self):
         label = tk.Label(self.frame, text="Transaction Details")
-        label.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+        label.grid(row=0, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
 
         self.total_amount_label = tk.Label(self.frame, text="Total: ")
         self.total_amount_label.grid(row=2, column=0, sticky="nw")
