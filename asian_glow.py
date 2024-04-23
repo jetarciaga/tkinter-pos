@@ -133,8 +133,8 @@ class ProductWidget:
             "P120\nAsian Glow Toner",
             lambda: add_orders("Asian Glow Toner", 120)
         )
-        sunscreen = ImageButton(**button_config)
-        sunscreen.grid_layout(1, 2)
+        toner = ImageButton(**button_config)
+        toner.grid_layout(1, 2)
 
 
 @dataclass
